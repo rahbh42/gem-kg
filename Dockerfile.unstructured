@@ -1,0 +1,21 @@
+# Dockerfile.unstructured
+# This is for the dedicated document processing service
+
+FROM python:3.11-slim
+
+WORKDIR /service
+
+# Install system dependencies needed by unstructured for PDF processing
+RUN apt-get update && apt-get install -y \
+    libmagic1 \
+    poppler-utils \
+    tesseract-ocr \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY unstructured_requirements.txt .
+RUN pip install --no-cache-dir -r unstructured_requirements.txt
+
+COPY unstructured_service.py .
+
+EXPOSE 8008
+CMD ["uvicorn", "unstructured_service:app", "--host", "0.0.0.0", "--port", "8008"]

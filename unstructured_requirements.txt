@@ -1,0 +1,5 @@
+# unstructured_requirements.txt
+fastapi
+uvicorn
+python-multipart
+unstructured[pdf]

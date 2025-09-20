@@ -1,0 +1,45 @@
+#version: '3.8'
+
+services:
+  # This is our main application
+  agent_app:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent_app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./model_cache:/app/model_cache
+    env_file:
+      - .env
+    depends_on:
+      - neo4j
+      - unstructured_service # It now depends on the new service
+    mem_reservation: 4g
+    mem_limit: 16g
+
+  # This is the new, dedicated document processing service
+  unstructured_service:
+    build:
+      context: .
+      dockerfile: Dockerfile.unstructured
+    ports:
+      - "8008:8008" # Expose the service on a different port
+
+  # The Neo4j database remains the same
+  neo4j:
+    image: neo4j:5.12.0
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    environment:
+      - NEO4J_AUTH=${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+      - NEO4J_PLUGINS=["apoc", "graph-data-science"]
+      - NEO4J_server_memory_heap_max__size=4G
+
+volumes:
+  neo4j_data:

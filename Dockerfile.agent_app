@@ -1,0 +1,50 @@
+# Dockerfile.agent_app
+# This is for our main Streamlit + CrewAI application
+
+# --- 1. Builder Stage: Install dependencies ---
+FROM python:3.11 as builder
+
+# Install poetry
+RUN pip install poetry==1.8.2
+WORKDIR /app
+RUN poetry config virtualenvs.create false
+ENV POETRY_REQUESTS_TIMEOUT=600
+
+# Copy only the dependency files to leverage Docker cache
+COPY pyproject.toml poetry.lock* ./
+
+# Install dependencies
+RUN poetry install --no-root --only main
+
+# --- 2. Final Stage: Application ---
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# --- THIS BLOCK IS NOW CORRECTLY ADDED BACK ---
+# Install system dependencies needed by the AI libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    pkg-config \
+    libsentencepiece-dev \
+    libprotobuf-dev \
+    protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- THESE BLOCKS ARE NOW CORRECTLY ADDED BACK ---
+# Copy the installed python packages from the builder stage
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+# Copy the executables (like streamlit) from the builder stage
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy the application source code
+# COPY app.py .
+# COPY crew_logic.py .
+# COPY crew_tools/ ./crew_tools
+COPY . .
+
+# Expose the port streamlit runs on
+EXPOSE 8501
+
+# The command to run the Streamlit application
+CMD ["streamlit", "run", "app.py"]
